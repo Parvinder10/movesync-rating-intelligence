@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoveSync Rating Intelligence — Monthly Operations Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .badge-p0 { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .badge-p1 { background-color: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
+    .badge-p2 { background-color: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+    .status-improving { color: #166534; background-color: #dcfce7; }
+    .status-worsening { color: #991b1b; background-color: #fee2e2; }
+    .status-persistent { color: #1e40af; background-color: #dbeafe; }
+    .status-new { color: #86198f; background-color: #f5d0fe; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased flex flex-col min-h-screen">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-50 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-lg shadow">
+          M
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-base font-semibold leading-none tracking-tight">MoveSync Rating Intelligence</h1>
+            <span class="text-xs bg-emerald-500/20 text-emerald-300 font-mono px-2 py-0.5 rounded-full border border-emerald-500/30">Verified Live Data</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Recurring Monthly Investigation & Improvement System | com.moveinsync.ets</p>
+        </div>
+      </div>
+
+      <!-- Quick Action Controls -->
+      <div class="flex items-center space-x-3">
+        <button id="openRunModalBtn" class="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md shadow transition">
+          <i data-lucide="play" class="w-3.5 h-3.5"></i>
+          <span>Run Monthly Run</span>
+        </button>
+        <a href="/api/reports/latest/pdf" target="_blank" class="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-md border border-slate-700 transition">
+          <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+          <span>Download PDF Report</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Sub-Nav Tab Bar -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-slate-900 border-t border-slate-800/80 flex space-x-1 overflow-x-auto text-xs font-medium">
+      <button class="nav-tab active px-4 py-2.5 text-blue-400 border-b-2 border-blue-500 flex items-center space-x-1.5 transition" data-tab="tab-overview">
+        <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+        <span>Current Investigation</span>
+      </button>
+      <button class="nav-tab px-4 py-2.5 text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center space-x-1.5 transition" data-tab="tab-evidence">
+        <i data-lucide="search" class="w-3.5 h-3.5"></i>
+        <span>Evidence Explorer</span>
+      </button>
+      <button class="nav-tab px-4 py-2.5 text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center space-x-1.5 transition" data-tab="tab-priorities">
+        <i data-lucide="list-ordered" class="w-3.5 h-3.5"></i>
+        <span>Priority Register</span>
+      </button>
+      <button class="nav-tab px-4 py-2.5 text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center space-x-1.5 transition" data-tab="tab-comparison">
+        <i data-lucide="git-compare" class="w-3.5 h-3.5"></i>
+        <span>Month-over-Month</span>
+      </button>
+      <button class="nav-tab px-4 py-2.5 text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center space-x-1.5 transition" data-tab="tab-actions">
+        <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+        <span>Action Tracker</span>
+      </button>
+      <button class="nav-tab px-4 py-2.5 text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center space-x-1.5 transition" data-tab="tab-reports">
+        <i data-lucide="archive" class="w-3.5 h-3.5"></i>
+        <span>Reports & Exports</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+    <!-- Global App Metadata Banner -->
+    <section class="bg-white rounded-xl border border-slate-200 p-4 mb-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div class="flex items-start space-x-3.5">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xl font-bold shadow">
+          🚗
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h2 id="appTitle" class="text-base font-bold text-slate-900">MoveInSync</h2>
+            <span class="text-xs bg-slate-100 text-slate-600 font-mono px-2 py-0.5 rounded border border-slate-200" id="appPackageId">com.moveinsync.ets</span>
+            <span class="text-xs bg-emerald-100 text-emerald-800 font-medium px-2 py-0.5 rounded">Verified Official App</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">Developer: <span id="appDev" class="font-medium text-slate-700">MoveInSync: Enabling Hybrid Workplaces</span> | Category: <span id="appGenre">Maps & Navigation</span> | Installs: <span id="appInstalls" class="font-semibold text-slate-700">1,000,000+</span></p>
+        </div>
+      </div>
+
+      <!-- Ratings Contrast KPIs -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-6">
+        <div>
+          <div class="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Store Rating</div>
+          <div class="flex items-baseline space-x-1">
+            <span id="storeRating" class="text-xl font-black text-emerald-600">4.64★</span>
+            <span class="text-[10px] text-slate-400">(114.8k)</span>
+          </div>
+        </div>
+        <div>
+          <div class="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Sample Average</div>
+          <div class="flex items-baseline space-x-1">
+            <span id="sampleRating" class="text-xl font-black text-amber-600">3.83★</span>
+            <span class="text-[10px] text-slate-400">(3,000)</span>
+          </div>
+        </div>
+        <div>
+          <div class="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Critical Reviews</div>
+          <div class="text-xl font-black text-rose-600" id="criticalShare">27.1%</div>
+        </div>
+        <div>
+          <div class="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Reporting Period</div>
+          <div class="text-base font-bold text-slate-800" id="currentPeriodDisplay">2026-10</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 1: CURRENT INVESTIGATION -->
+    <div id="tab-overview" class="tab-content space-y-6">
+      <!-- Executive Insight Callout -->
+      <div class="bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-xl p-5 shadow">
+        <div class="flex items-start justify-between">
+          <div>
+            <span class="text-xs uppercase font-bold tracking-wider text-blue-300">Primary Monthly Finding</span>
+            <h3 class="text-lg font-bold mt-1">Severe Divergence Between Store Rating (4.64★) and Active Commuter Sentiment (3.83★)</h3>
+            <p class="text-xs text-slate-200 mt-2 max-w-3xl leading-relaxed">
+              While the historical Play Store score remains elevated from 98k+ legacy 5★ ratings, <b>27.1% of recent active reviews are 1 or 2 stars</b>.
+              Dissatisfaction is driven by acute in-trip friction (Live GPS drift, 3x ETA errors, driver false no-shows) and regressive UX gating (unskippable in-app rating modals and seatbelt safety dialogs blocking the 'View OTP' button).
+            </p>
+          </div>
+          <div class="hidden lg:block bg-white/10 rounded-lg p-3 text-right">
+            <div class="text-xs text-blue-200">Recommended First Action</div>
+            <div class="text-sm font-bold text-white mt-0.5">ACT-001 (P0 Quick Win)</div>
+            <div class="text-[11px] text-blue-300 mt-1">Decouple In-App Rating & Remove OTP Gates</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Rating Distribution Card -->
+        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h4 class="text-sm font-bold text-slate-900">Rating Distribution Comparison</h4>
+              <p class="text-xs text-slate-500">Play Store Lifetime vs. Recent 3,000 Verified Review Sample</p>
+            </div>
+            <span class="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Bimodal Skew</span>
+          </div>
+          <div class="h-60">
+            <canvas id="overviewRatingChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Issue Prevalence Breakdown Card -->
+        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h4 class="text-sm font-bold text-slate-900">Critical Complaint Themes</h4>
+              <p class="text-xs text-slate-500">Proportion of 1★ and 2★ reviews categorized by root symptom</p>
+            </div>
+            <span class="text-xs font-mono bg-rose-50 text-rose-700 px-2 py-0.5 rounded border border-rose-200">814 Critical Reviews</span>
+          </div>
+          <div class="h-60">
+            <canvas id="overviewThemeChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Prioritized Defect Summary Table -->
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h4 class="text-sm font-bold text-slate-900">Current Defect Priority Register</h4>
+            <p class="text-xs text-slate-500">Evaluated via multi-factor model: (Prev × 0.3) + (Sev × 0.3) + (Imp × 0.2) + (Conf × 0.1) - (Eff × 0.1)</p>
+          </div>
+          <button class="text-xs font-medium text-blue-600 hover:text-blue-800" onclick="switchTab('tab-priorities')">View Full Matrix →</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-600 uppercase text-[10px] tracking-wider border-y border-slate-200">
+              <tr>
+                <th class="py-2.5 px-3">Rank</th>
+                <th class="py-2.5 px-3">Defect Theme</th>
+                <th class="py-2.5 px-3">Critical Share</th>
+                <th class="py-2.5 px-3">Avg Rating</th>
+                <th class="py-2.5 px-3">Priority Score</th>
+                <th class="py-2.5 px-3">Root Cause Hypothesis</th>
+                <th class="py-2.5 px-3">Action</th>
+              </tr>
+            </thead>
+            <tbody id="overviewPrioritiesTbody" class="divide-y divide-slate-100">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: EVIDENCE EXPLORER -->
+    <div id="tab-evidence" class="tab-content hidden space-y-4">
+      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Search Keywords</label>
+            <input type="text" id="filterQuery" placeholder="e.g. otp, delay, gps, driver..." class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Star Rating</label>
+            <select id="filterScore" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">All Ratings (1 - 5★)</option>
+              <option value="1">1 Star</option>
+              <option value="2">2 Stars</option>
+              <option value="3">3 Stars</option>
+              <option value="4">4 Stars</option>
+              <option value="5">5 Stars</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Defect Theme</label>
+            <select id="filterTheme" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">All Themes</option>
+              <option value="LIVE_TRACKING_GPS">Live Tracking & Location</option>
+              <option value="CAB_ALLOCATION_DELAYS">Cab Allocation & Delays</option>
+              <option value="DRIVER_BEHAVIOR_NOSHOW">Driver Conduct & No-Show</option>
+              <option value="AUTH_LOGIN_OTP">Auth, Session & OTP</option>
+              <option value="APP_PERFORMANCE_CRASH">Stability & Crashes</option>
+              <option value="BOOKING_SCHEDULING">Booking & Scheduling</option>
+              <option value="FORCED_RATING_MODAL">Forced Ride Rating</option>
+              <option value="NOTIFICATIONS_ALERTS">Notifications & Alerts</option>
+              <option value="POSITIVE_EXPERIENCE">Positive Experience</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Reporting Period</label>
+            <select id="filterPeriod" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">All Periods</option>
+              <!-- Populated via JS -->
+            </select>
+          </div>
+          <div class="flex items-end space-x-2">
+            <button id="applyFiltersBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium py-2 px-3 rounded-lg transition">Apply Filters</button>
+            <button id="resetFiltersBtn" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium py-2 px-3 rounded-lg transition">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Evidence Results Summary & Export -->
+      <div class="flex items-center justify-between text-xs text-slate-500 px-1">
+        <div>Showing <span id="evidenceShowingCount" class="font-bold text-slate-800">0</span> of <span id="evidenceTotalCount" class="font-bold text-slate-800">0</span> verified reviews</div>
+        <a id="exportReviewsCsvBtn" href="/api/export/reviews.csv" class="flex items-center space-x-1 text-blue-600 hover:text-blue-800 font-medium">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          <span>Export Filtered Reviews (CSV)</span>
+        </a>
+      </div>
+
+      <!-- Reviews Feed -->
+      <div id="reviewsContainer" class="space-y-3">
+        <!-- Rendered via JS -->
+      </div>
+
+      <!-- Pagination -->
+      <div class="flex items-center justify-between pt-2">
+        <button id="prevPageBtn" class="px-3 py-1.5 bg-white border border-slate-200 text-xs font-medium rounded-md hover:bg-slate-50 disabled:opacity-40">Previous Page</button>
+        <span id="pageIndicator" class="text-xs text-slate-500 font-mono">Page 1</span>
+        <button id="nextPageBtn" class="px-3 py-1.5 bg-white border border-slate-200 text-xs font-medium rounded-md hover:bg-slate-50 disabled:opacity-40">Next Page</button>
+      </div>
+    </div>
+
+    <!-- TAB 3: PRIORITY REGISTER -->
+    <div id="tab-priorities" class="tab-content hidden space-y-6">
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Empirical Defect Prioritization Register</h3>
+            <p class="text-xs text-slate-500">Methodology Version: <span class="font-mono font-medium">1.0.0</span> | Multi-Factor Decision Framework</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="text-xs text-slate-500">Period:</span>
+            <select id="priorityPeriodSelect" class="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg">
+              <!-- Populated via JS -->
+            </select>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-600 uppercase text-[10px] tracking-wider border-y border-slate-200">
+              <tr>
+                <th class="py-3 px-3">Rank & Shift</th>
+                <th class="py-3 px-3">Issue Theme</th>
+                <th class="py-3 px-3">Prev % (30%)</th>
+                <th class="py-3 px-3">Severity (30%)</th>
+                <th class="py-3 px-3">Impact (20%)</th>
+                <th class="py-3 px-3">Conf (10%)</th>
+                <th class="py-3 px-3">Effort (10%)</th>
+                <th class="py-3 px-3">Priority Score</th>
+                <th class="py-3 px-3">Recommended Intervention</th>
+              </tr>
+            </thead>
+            <tbody id="prioritiesTableTbody" class="divide-y divide-slate-100">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Priority Methodology Rationale Card -->
+      <div class="bg-slate-50 rounded-xl border border-slate-200 p-5">
+        <h4 class="text-sm font-bold text-slate-900 mb-2">Prioritization Methodology & Scoring Rationale</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600">
+          <div>
+            <p class="font-semibold text-slate-800 mb-1">Formula & Factor Weights:</p>
+            <p class="font-mono bg-white p-2 rounded border border-slate-200 text-blue-900 mb-2">Score = (P × 0.3) + (S × 0.3) + (I × 0.2) + (C × 0.1) - (E × 0.1)</p>
+            <ul class="list-disc pl-4 space-y-1">
+              <li><b>Prevalence (P):</b> Share of critical (1-2★) reviews in the period normalized [1..10].</li>
+              <li><b>Severity (S):</b> Physical disruption to passenger commute viability (Stranded: 9.5, Auth block: 8.0).</li>
+            </ul>
+          </div>
+          <div>
+            <ul class="list-disc pl-4 space-y-1">
+              <li><b>Enterprise Impact (I):</b> B2B SLA breach risk and corporate client contract churn probability.</li>
+              <li><b>Confidence (C):</b> Statistical reliability proportional to logged sample volume.</li>
+              <li><b>Effort (E):</b> Estimated engineering and vendor operational overhead to implement fix.</li>
+            </ul>
+            <div class="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-blue-800 text-[11px]">
+              <b>First-Action Defense:</b> Although Driver Conduct (#1) has higher raw complaints, it requires physical fleet governance across hundreds of vendors. <b>ACT-001 (Auth / Rating Decoupling)</b> is a zero-dependency client-side fix with immediate ROI.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: MONTH-OVER-MONTH COMPARISON -->
+    <div id="tab-comparison" class="tab-content hidden space-y-6">
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Month-over-Month Delta Analysis</h3>
+            <p class="text-xs text-slate-500">Track volume shifts, rating trajectories, and evolving defect patterns</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="text-xs text-slate-500">Compare:</span>
+            <select id="momCurrentPeriodSelect" class="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg"></select>
+            <span class="text-xs text-slate-400">vs</span>
+            <select id="momPreviousPeriodSelect" class="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg"></select>
+            <button id="runMomCompareBtn" class="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Compare</button>
+          </div>
+        </div>
+
+        <!-- Delta KPI Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div class="bg-slate-50 rounded-lg p-3.5 border border-slate-200">
+            <div class="text-xs text-slate-500 font-medium">Review Volume Delta</div>
+            <div class="flex items-baseline space-x-2 mt-1">
+              <span id="momVolDelta" class="text-xl font-bold text-slate-800">--</span>
+              <span id="momVolPct" class="text-xs text-slate-500 font-mono">(--)</span>
+            </div>
+            <div class="text-[11px] text-slate-400 mt-1" id="momVolCounts">Current: -- | Previous: --</div>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-3.5 border border-slate-200">
+            <div class="text-xs text-slate-500 font-medium">Sample Rating Shift</div>
+            <div class="flex items-baseline space-x-2 mt-1">
+              <span id="momRatingDelta" class="text-xl font-bold text-slate-800">--</span>
+              <span class="text-xs text-slate-400">stars</span>
+            </div>
+            <div class="text-[11px] text-slate-400 mt-1" id="momRatingLevels">Current: --★ | Previous: --★</div>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-3.5 border border-slate-200">
+            <div class="text-xs text-slate-500 font-medium">Critical Review Share Shift</div>
+            <div class="flex items-baseline space-x-2 mt-1">
+              <span id="momCritDelta" class="text-xl font-bold text-slate-800">--</span>
+              <span class="text-xs text-slate-400">% pts</span>
+            </div>
+            <div class="text-[11px] text-slate-400 mt-1" id="momCritLevels">Current: --% | Previous: --%</div>
+          </div>
+        </div>
+
+        <!-- 12-Month Longitudinal Trend Chart -->
+        <div class="mb-6">
+          <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">Longitudinal Volume & Rating History (12 Months)</h4>
+          <div class="h-60 bg-white border border-slate-200 rounded-lg p-3">
+            <canvas id="momTrendChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Trajectory Matrix -->
+        <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">Theme Trajectory Breakdown</h4>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-600 uppercase text-[10px] tracking-wider border-y border-slate-200">
+              <tr>
+                <th class="py-2.5 px-3">Defect Theme</th>
+                <th class="py-2.5 px-3">Trajectory Status</th>
+                <th class="py-2.5 px-3">Current Share</th>
+                <th class="py-2.5 px-3">Previous Share</th>
+                <th class="py-2.5 px-3">Share Delta</th>
+                <th class="py-2.5 px-3">Current Rank</th>
+              </tr>
+            </thead>
+            <tbody id="momTrajectoriesTbody" class="divide-y divide-slate-100">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: ACTION TRACKER -->
+    <div id="tab-actions" class="tab-content hidden space-y-6">
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Persistent Action Register & Outcome Tracker</h3>
+            <p class="text-xs text-slate-500">Connects engineering interventions to quantifiable baseline metrics with strict non-causal attribution</p>
+          </div>
+          <span class="text-xs font-medium px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded">Non-Causal Guardrails Enforced</span>
+        </div>
+
+        <div class="space-y-4" id="actionsListContainer">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: REPORTS & EXPORTS -->
+    <div id="tab-reports" class="tab-content hidden space-y-6">
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <h3 class="text-base font-bold text-slate-900 mb-1">Generated Investigation Reports & Artifacts</h3>
+        <p class="text-xs text-slate-500 mb-4">Access dated historical investigation summaries, data exports, and the formal case study deliverable.</p>
+
+        <!-- Case Study PDF Hero Card -->
+        <div class="bg-gradient-to-r from-slate-900 to-blue-950 text-white rounded-xl p-5 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="bg-blue-500 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded">Deliverable A</span>
+              <h4 class="text-base font-bold">MoveInSync Recruiter-Ready Case Study PDF</h4>
+            </div>
+            <p class="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+              Official 8-page comprehensive report covering executive findings, Play Store data methodology, defect prevalence charts, multi-factor priority scoring, engineering roadmap, and recurring monitoring runbook.
+            </p>
+          </div>
+          <a href="/api/reports/latest/pdf" target="_blank" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg shadow flex items-center justify-center space-x-2 transition whitespace-nowrap">
+            <i data-lucide="file-down" class="w-4 h-4"></i>
+            <span>Download Case Study PDF (8 Pages)</span>
+          </a>
+        </div>
+
+        <!-- Exports Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div class="border border-slate-200 rounded-lg p-4 bg-slate-50 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-slate-800">Review Evidence Dataset (CSV)</div>
+              <div class="text-[11px] text-slate-500">Cleaned & enriched reviews with themes, sentiment & versions</div>
+            </div>
+            <a href="/api/export/reviews.csv" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-xs font-medium rounded text-slate-700 shadow-sm flex items-center space-x-1">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Export CSV</span>
+            </a>
+          </div>
+
+          <div class="border border-slate-200 rounded-lg p-4 bg-slate-50 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-slate-800">Issue Priority Snapshots (CSV)</div>
+              <div class="text-[11px] text-slate-500">Historical defect rankings, scores, and prevalence metrics</div>
+            </div>
+            <a href="/api/export/issues.csv" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-xs font-medium rounded text-slate-700 shadow-sm flex items-center space-x-1">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Export CSV</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Historical Reports Table -->
+        <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">Historical Monthly Run Archive</h4>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-600 uppercase text-[10px] tracking-wider border-y border-slate-200">
+              <tr>
+                <th class="py-2.5 px-3">Reporting Period</th>
+                <th class="py-2.5 px-3">Run ID</th>
+                <th class="py-2.5 px-3">Execution Timestamp</th>
+                <th class="py-2.5 px-3">Artifact Reference</th>
+                <th class="py-2.5 px-3">Action</th>
+              </tr>
+            </thead>
+            <tbody id="reportsTableTbody" class="divide-y divide-slate-100">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Run Monthly Investigation Modal -->
+  <div id="runModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-slate-900">Run Monthly Investigation</h3>
+        <button id="closeRunModalBtn" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+        Executes the full multi-stage pipeline: collection, deduplication, theme classification, defect priority scoring, MoM delta comparison, and report compilation.
+      </p>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Select Target Reporting Period</label>
+          <input type="month" id="modalPeriodInput" value="2026-10" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg">
+        </div>
+
+        <div class="flex items-start space-x-2">
+          <input type="checkbox" id="modalLiveCollectCheck" class="mt-0.5 rounded text-blue-600">
+          <label for="modalLiveCollectCheck" class="text-xs text-slate-600">
+            Fetch fresh live reviews from Google Play Store before running analysis (uncheck to execute instantly against verified stored evidence).
+          </label>
+        </div>
+
+        <div id="modalStatusArea" class="hidden p-3 rounded-lg text-xs"></div>
+
+        <div class="flex items-center justify-end space-x-2 pt-2">
+          <button id="cancelModalBtn" class="px-3 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-200">Cancel</button>
+          <button id="executeRunBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 flex items-center space-x-1.5 shadow">
+            <span id="executeBtnText">Execute Investigation</span>
+            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Status Edit Modal -->
+  <div id="actionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-slate-900" id="editActionModalTitle">Update Action Status</h3>
+        <button id="closeActionModalBtn" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <input type="hidden" id="editActionId">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Status</label>
+          <select id="editActionStatus" class="w-full px-3 py-2 border border-slate-200 rounded-lg">
+            <option value="proposed">Proposed</option>
+            <option value="investigating">Investigating</option>
+            <option value="in_progress">In Progress</option>
+            <option value="implemented">Implemented</option>
+            <option value="evaluated">Evaluated</option>
+            <option value="blocked">Blocked</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Verified Implementation Evidence</label>
+          <textarea id="editActionEvidence" rows="3" class="w-full px-3 py-2 border border-slate-200 rounded-lg font-sans"></textarea>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Outcome Label (Strict Non-Causal Rules)</label>
+          <select id="editActionOutcome" class="w-full px-3 py-2 border border-slate-200 rounded-lg">
+            <option value="pending">Pending</option>
+            <option value="observed_association">Observed Association</option>
+            <option value="inconclusive">Inconclusive</option>
+            <option value="adverse_shift">Adverse Shift</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Next Decision</label>
+          <input type="text" id="editActionDecision" class="w-full px-3 py-2 border border-slate-200 rounded-lg">
+        </div>
+
+        <div class="flex items-center justify-end space-x-2 pt-3">
+          <button id="cancelActionModalBtn" class="px-3 py-2 bg-slate-100 text-slate-600 rounded-lg font-medium hover:bg-slate-200">Cancel</button>
+          <button id="saveActionChangesBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="bg-slate-900 border-t border-slate-800 text-slate-400 text-xs py-4 px-4 sm:px-6 lg:px-8 mt-auto">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>MoveSync Rating Intelligence System &copy; 2026 | Built for Forward Deployed Engineering Evaluation</div>
+      <div class="flex items-center space-x-4">
+        <span>Verified Play Store Package: <code class="text-blue-400">com.moveinsync.ets</code></span>
+        <span>Methodology v1.0.0</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
