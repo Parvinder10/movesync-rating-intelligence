@@ -76,6 +76,10 @@
         <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
         <span>Action Tracker</span>
       </button>
+      <button class="nav-tab px-4 py-2.5 text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center space-x-1.5 transition" data-tab="tab-playbook">
+        <i data-lucide="wrench" class="w-3.5 h-3.5"></i>
+        <span>Improvement Playbook</span>
+      </button>
       <button class="nav-tab px-4 py-2.5 text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center space-x-1.5 transition" data-tab="tab-reports">
         <i data-lucide="archive" class="w-3.5 h-3.5"></i>
         <span>Reports & Exports</span>
@@ -146,6 +150,10 @@
             <div class="text-xs text-blue-200">Recommended First Action</div>
             <div class="text-sm font-bold text-white mt-0.5">ACT-001 (P0 Quick Win)</div>
             <div class="text-[11px] text-blue-300 mt-1">Decouple In-App Rating & Remove OTP Gates</div>
+            <button onclick="openPlaybook('ACT-001')" class="mt-2.5 inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-white text-xs font-bold rounded-md shadow transition">
+              <i data-lucide="wrench" class="w-3.5 h-3.5"></i>
+              <span>How to Improve ACT-001 →</span>
+            </button>
           </div>
         </div>
       </div>
@@ -437,6 +445,41 @@
       </div>
     </div>
 
+    <!-- TAB: IMPROVEMENT PLAYBOOK (WHAT TO IMPROVE + HOW TO IMPROVE) -->
+    <div id="tab-playbook" class="tab-content hidden space-y-6">
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-100 pb-4 mb-5">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200">Engineering Blueprint</span>
+              <h3 class="text-base font-bold text-slate-900">Improvement & Recommendation Playbook</h3>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">
+              Deep-dive specifications detailing <b>WHAT should be improved</b> (diagnostic evidence & friction points) and <b>HOW to improve it</b> (architectural solution, step-by-step roadmap, canary rollout, and risk guardrails).
+            </p>
+          </div>
+
+          <!-- Action Switcher Buttons -->
+          <div class="flex items-center space-x-2" id="playbookActionTabs">
+            <button onclick="renderPlaybookTab('ACT-001')" class="playbook-tab-btn active px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white shadow transition" data-action="ACT-001">
+              ACT-001 (Rating & OTP)
+            </button>
+            <button onclick="renderPlaybookTab('ACT-002')" class="playbook-tab-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition" data-action="ACT-002">
+              ACT-002 (GPS & Telematics)
+            </button>
+            <button onclick="renderPlaybookTab('ACT-003')" class="playbook-tab-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition" data-action="ACT-003">
+              ACT-003 (Driver Geofence)
+            </button>
+          </div>
+        </div>
+
+        <!-- Dynamic Playbook Content Area -->
+        <div id="playbookDetailContainer" class="space-y-6">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+    </div>
+
     <!-- TAB 6: REPORTS & EXPORTS -->
     <div id="tab-reports" class="tab-content hidden space-y-6">
       <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
@@ -544,6 +587,37 @@
             <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Improvement Playbook Modal (What to Improve + How to Improve) -->
+  <div id="playbookModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white">
+            <i data-lucide="wrench" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold" id="modalPlaybookTitle">Engineering Improvement Playbook</h3>
+            <p class="text-[11px] text-slate-400" id="modalPlaybookSubtitle">Action ID: ACT-001 | Priority: P0 Quick Win</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="goToFullPlaybookTab()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+            Open in Full Tab ↗
+          </button>
+          <button id="closePlaybookModalBtn" class="text-slate-400 hover:text-white p-1">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="p-6 overflow-y-auto custom-scroll space-y-6 flex-1" id="modalPlaybookBody">
+        <!-- Rendered via JS -->
       </div>
     </div>
   </div>

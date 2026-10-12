@@ -1,10 +1,12 @@
 # MoveSync Rating Intelligence System
 ### Recurring Monthly Investigation, Defect Prioritization & Outcome Tracking Engine
 
-[![Tests Passing](https://img.shields.io/badge/tests-22%2F22%20passed-success)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-28%2F28%20passed-success)](tests/)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-1.0.0-009688.svg)](https://fastapi.tiangolo.com/)
 [![Verified Evidence](https://img.shields.io/badge/evidence-Play%20Store%20Verified-blue)](https://play.google.com/store/apps/details?id=com.moveinsync.ets)
+[![Live Production](https://img.shields.io/badge/Vercel-Live%20Dashboard-000000?logo=vercel)](https://movesync-rating-intelligence-kappa.vercel.app)
+
 
 ---
 
@@ -57,13 +59,16 @@ This system establishes an end-to-end, reproducible, monthly intelligence system
   - *Page 6:* Targeted Engineering Action Plan (ACT-001, ACT-002, ACT-003)
   - *Page 7:* Measurement Baseline, Targets & Outcome Evaluation
   - *Page 8:* Recurring Monthly Monitoring System & Runbook
-- **Interactive Operations Dashboard:** Served locally at `http://localhost:8000` with 6 interactive views:
-  - *Current Investigation:* Metadata, score divergence, distribution charts.
-  - *Evidence Explorer:* Search, filter by score, theme, period, version with verbatim quotes.
-  - *Priority Register:* Multi-factor scoring breakdown, rank deltas.
-  - *Month-over-Month Comparison:* 12-month longitudinal trends, theme trajectories.
-  - *Action Tracker:* Intervention statuses, baseline vs target metrics, non-causal labels.
-  - *Reports & Exports:* CSV exports of reviews and issues, PDF download.
+- **Live Production Deployment (Vercel):** [https://movesync-rating-intelligence-kappa.vercel.app](https://movesync-rating-intelligence-kappa.vercel.app)
+- **Interactive Operations Dashboard:** Served locally at `http://localhost:8000` (or via Vercel) with 6 integrated views:
+  - *Current Investigation:* Metadata, Play Store vs sample score divergence, distribution charts.
+  - *Evidence Explorer:* Live search, filter by score, theme, period, version with verbatim quotes.
+  - *Priority Register:* Multi-factor scoring breakdown, rank deltas, direct links to improvement playbooks.
+  - *Month-over-Month Comparison:* 12-month longitudinal trends, theme trajectories (Emerging, Improving, Worsening, Persistent).
+  - *Action Tracker:* Intervention statuses, baseline vs target metrics, strict non-causal labels (`observed_association`, `inconclusive`).
+  - *Improvement & Recommendation Playbook:* Interactive modal and dedicated view detailing **WHAT to improve** (symptom diagnosis, verbatim citations, critical journey stage, baseline metrics) and **HOW to improve it** (architecture, step-by-step technical execution, tech stack, canary rollout, operational guardrails).
+  - *Reports & Exports:* CSV exports of reviews and issues, 8-page recruiter-ready Case Study PDF download.
+
 
 ---
 

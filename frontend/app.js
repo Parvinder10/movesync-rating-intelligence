@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadMomData();
   await loadActionsData();
   await loadReportsData();
+  await renderPlaybookTab("ACT-001");
 });
 
 function setupTabNavigation() {
@@ -121,6 +122,12 @@ function setupEventListeners() {
     actionModal.classList.add("hidden");
   });
   document.getElementById("saveActionChangesBtn")?.addEventListener("click", saveActionChanges);
+
+  // Playbook modal triggers
+  const playbookModal = document.getElementById("playbookModal");
+  document.getElementById("closePlaybookModalBtn")?.addEventListener("click", () => {
+    playbookModal.classList.add("hidden");
+  });
 }
 
 // -------------------------------------------------------------
@@ -193,12 +200,21 @@ async function loadOverviewData() {
     // 2. Overview Theme Chart
     renderOverviewThemeChart(issues);
 
-    // 3. Overview Priorities Table
     const tbody = document.getElementById("overviewPrioritiesTbody");
     tbody.innerHTML = "";
+    const actionThemeMap = {
+      'FORCED_RATING_MODAL': 'ACT-001',
+      'AUTH_LOGIN_OTP': 'ACT-001',
+      'LIVE_TRACKING_GPS': 'ACT-002',
+      'CAB_ALLOCATION_DELAYS': 'ACT-002',
+      'DRIVER_BEHAVIOR_NOSHOW': 'ACT-003'
+    };
+
     issues.slice(0, 5).forEach(issue => {
       const tr = document.createElement("tr");
       tr.className = "hover:bg-slate-50 transition";
+      const actId = actionThemeMap[issue.theme_code] || 'ACT-001';
+
       tr.innerHTML = `
         <td class="py-2.5 px-3 font-bold text-slate-900">#${issue.priority_rank}</td>
         <td class="py-2.5 px-3">
@@ -210,7 +226,9 @@ async function loadOverviewData() {
         <td class="py-2.5 px-3 font-black text-slate-900">${issue.priority_score.toFixed(2)}</td>
         <td class="py-2.5 px-3 text-slate-500 max-w-xs truncate" title="${issue.root_cause_hypothesis || ''}">${issue.root_cause_hypothesis || 'N/A'}</td>
         <td class="py-2.5 px-3">
-          <button class="text-blue-600 hover:text-blue-800 font-medium" onclick="switchTab('tab-priorities')">Details</button>
+          <button class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-xs font-bold whitespace-nowrap transition" onclick="openPlaybook('${actId}')">
+            How to Improve →
+          </button>
         </td>
       `;
       tbody.appendChild(tr);
@@ -416,10 +434,17 @@ async function loadPrioritiesData(period = currentPeriod) {
           </span>
         </td>
         <td class="py-3 px-3 text-slate-600 text-[11px] max-w-xs">
-          ${item.theme_code === 'FORCED_RATING_MODAL' || item.theme_code === 'AUTH_LOGIN_OTP' ?
-            '<b>ACT-001:</b> Decouple rating modal and remove OTP gatekeeper.' :
-            (item.theme_code === 'LIVE_TRACKING_GPS' ? '<b>ACT-002:</b> Foreground GPS polling sync.' : '<b>ACT-003:</b> Driver geofence arrival check.')
-          }
+          <div class="space-y-1">
+            <div>
+              ${item.theme_code === 'FORCED_RATING_MODAL' || item.theme_code === 'AUTH_LOGIN_OTP' ?
+                '<b>ACT-001:</b> Decouple rating modal and remove OTP gatekeeper.' :
+                (item.theme_code === 'LIVE_TRACKING_GPS' || item.theme_code === 'CAB_ALLOCATION_DELAYS' ? '<b>ACT-002:</b> Foreground GPS polling sync.' : '<b>ACT-003:</b> Driver geofence arrival check.')
+              }
+            </div>
+            <button onclick="openPlaybook('${item.theme_code === 'DRIVER_BEHAVIOR_NOSHOW' ? 'ACT-003' : (item.theme_code === 'LIVE_TRACKING_GPS' || item.theme_code === 'CAB_ALLOCATION_DELAYS' ? 'ACT-002' : 'ACT-001')}')" class="inline-flex items-center space-x-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-[10px] font-bold transition">
+              <span>How to Improve →</span>
+            </button>
+          </div>
         </td>
       `;
       tbody.appendChild(tr);
@@ -578,6 +603,9 @@ async function loadActionsData() {
             <div class="text-xs text-slate-500 mt-1">Owner: <span class="font-semibold text-slate-700">${act.owner}</span> | Target Review: <span class="font-mono">${act.target_review_date || 'N/A'}</span></div>
           </div>
           <div class="flex items-center space-x-2">
+            <button class="text-xs px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded font-bold transition flex items-center space-x-1" onclick="openPlaybook('${act.action_id}')">
+              <span>How to Improve →</span>
+            </button>
             <span class="text-xs uppercase font-bold px-2 py-0.5 rounded ${statusBadge}">${act.status.replace('_', ' ')}</span>
             <button class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded font-medium text-slate-700" onclick="openEditActionModal('${act.action_id}')">Edit Status</button>
           </div>
@@ -729,4 +757,238 @@ function escapeHtml(str) {
   return str.replace(/[&<>"']/g, m => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
   })[m]);
+}
+
+// -------------------------------------------------------------
+// Improvement & Recommendation Playbook Handlers
+// -------------------------------------------------------------
+
+let currentPlaybookActionId = "ACT-001";
+
+async function openPlaybook(actionId) {
+  currentPlaybookActionId = actionId;
+  const modal = document.getElementById("playbookModal");
+  const modalBody = document.getElementById("modalPlaybookBody");
+  const modalTitle = document.getElementById("modalPlaybookTitle");
+  const modalSubtitle = document.getElementById("modalPlaybookSubtitle");
+
+  modalBody.innerHTML = `<div class="p-8 text-center text-slate-400">Loading improvement playbook for ${actionId}...</div>`;
+  modal.classList.remove("hidden");
+
+  try {
+    const res = await fetch(`/api/recommendations/${actionId}`);
+    if (!res.ok) throw new Error("Failed to load playbook");
+    const data = await res.json();
+
+    modalTitle.textContent = `${data.action_id}: ${data.title}`;
+    modalSubtitle.textContent = `Priority: ${data.priority_level} | Owner: ${data.owner} | Target: ${data.target_release}`;
+    modalBody.innerHTML = buildPlaybookHTML(data);
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    modalBody.innerHTML = `<div class="p-8 text-center text-rose-500 font-bold">Error loading playbook: ${err.message}</div>`;
+  }
+}
+
+function goToFullPlaybookTab() {
+  document.getElementById("playbookModal")?.classList.add("hidden");
+  switchTab("tab-playbook");
+  renderPlaybookTab(currentPlaybookActionId);
+}
+
+async function renderPlaybookTab(actionId = "ACT-001") {
+  currentPlaybookActionId = actionId;
+  const container = document.getElementById("playbookDetailContainer");
+  if (!container) return;
+
+  // Highlight tab buttons
+  document.querySelectorAll(".playbook-tab-btn").forEach(btn => {
+    const isActive = btn.getAttribute("data-action") === actionId;
+    btn.classList.toggle("bg-blue-600", isActive);
+    btn.classList.toggle("text-white", isActive);
+    btn.classList.toggle("shadow", isActive);
+    btn.classList.toggle("bg-slate-100", !isActive);
+    btn.classList.toggle("text-slate-700", !isActive);
+  });
+
+  container.innerHTML = `<div class="p-8 text-center text-slate-400">Loading engineering improvement blueprint for ${actionId}...</div>`;
+
+  try {
+    const res = await fetch(`/api/recommendations/${actionId}`);
+    if (!res.ok) throw new Error("Failed to load playbook");
+    const data = await res.json();
+    container.innerHTML = buildPlaybookHTML(data);
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    container.innerHTML = `<div class="p-8 text-center text-rose-500 font-bold">Error: ${err.message}</div>`;
+  }
+}
+
+function buildPlaybookHTML(data) {
+  const w = data.what_to_improve;
+  const h = data.how_to_improve;
+
+  const citationsHtml = (w.evidence_citations || []).map(c => `
+    <div class="bg-white p-3 rounded-lg border border-slate-200 text-xs shadow-xs space-y-1">
+      <div class="flex items-center justify-between text-[11px] text-slate-500">
+        <span class="font-bold text-rose-600">★ ${c.score} Star Complaint</span>
+        <span class="font-mono bg-slate-100 px-1.5 py-0.2 rounded text-[10px] text-slate-600">${c.version}</span>
+        <span class="text-slate-400 font-mono">${c.date}</span>
+      </div>
+      <p class="text-slate-700 italic leading-relaxed">"${escapeHtml(c.quote)}"</p>
+    </div>
+  `).join("");
+
+  const stepsHtml = (h.implementation_steps || []).map(s => `
+    <div class="flex items-start space-x-3 bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs">
+      <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+        ${s.step_number}
+      </div>
+      <div class="space-y-1 flex-1">
+        <div class="text-xs font-bold text-slate-900">${s.title}</div>
+        <div class="text-[11px] text-slate-600 leading-relaxed font-sans">${escapeHtml(s.detail)}</div>
+      </div>
+    </div>
+  `).join("");
+
+  const risksHtml = (h.guardrails_and_risks || []).map(r => `
+    <div class="bg-amber-50/70 p-2.5 rounded-lg border border-amber-200 text-[11px] text-amber-900 space-y-0.5">
+      <div class="font-bold">⚠️ Risk: ${escapeHtml(r.risk)}</div>
+      <div class="text-amber-800"><b>Mitigation:</b> ${escapeHtml(r.mitigation)}</div>
+    </div>
+  `).join("");
+
+  const techStackHtml = (h.technical_stack_impact || []).map(t => `
+    <li class="flex items-start space-x-1.5 text-xs text-slate-700">
+      <span class="text-blue-500 font-bold">•</span>
+      <span>${escapeHtml(t)}</span>
+    </li>
+  `).join("");
+
+  return `
+    <!-- Action Hero Header -->
+    <div class="bg-gradient-to-r from-slate-900 to-blue-950 text-white p-5 rounded-xl shadow space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center space-x-2">
+          <span class="bg-blue-600 text-white font-mono font-bold text-xs px-2.5 py-0.5 rounded shadow-xs">${data.action_id}</span>
+          <span class="bg-rose-500/20 text-rose-300 font-bold text-xs px-2.5 py-0.5 rounded border border-rose-500/30">${data.priority_level}</span>
+          <span class="bg-slate-800 text-slate-300 font-mono text-xs px-2 py-0.5 rounded border border-slate-700">Target: ${data.target_release}</span>
+        </div>
+        <div class="text-xs text-slate-300">
+          Squad Owner: <span class="font-bold text-white">${data.owner}</span> | <span class="font-mono text-blue-300">${data.timeline}</span>
+        </div>
+      </div>
+      <h3 class="text-base font-bold text-white tracking-tight">${data.title}</h3>
+    </div>
+
+    <!-- Two-Column Diagnosis & Engineering Solution Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- COLUMN 1: WHAT SHOULD BE IMPROVED -->
+      <div class="bg-rose-50/40 rounded-xl border border-rose-200/80 p-5 space-y-4">
+        <div class="flex items-center space-x-2 border-b border-rose-200 pb-3">
+          <div class="w-7 h-7 rounded-lg bg-rose-600 text-white flex items-center justify-center font-bold text-xs">
+            1
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-rose-950">WHAT SHOULD BE IMPROVED</h4>
+            <p class="text-[11px] text-rose-700">Diagnostic Evidence & Root Cause Breakdown</p>
+          </div>
+        </div>
+
+        <!-- Problem Statement -->
+        <div class="bg-white p-3.5 rounded-lg border border-rose-100 shadow-xs space-y-1.5">
+          <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Core Problem Statement</div>
+          <p class="text-xs text-slate-800 leading-relaxed font-semibold">${w.core_problem}</p>
+        </div>
+
+        <!-- Critical Path Commute Stage -->
+        <div class="bg-white p-3 rounded-lg border border-rose-100 shadow-xs flex items-center justify-between text-xs">
+          <div>
+            <div class="text-[10px] uppercase font-bold text-slate-400">Affected Journey Stage</div>
+            <div class="font-bold text-slate-900 mt-0.5">${w.affected_journey_stage}</div>
+          </div>
+          <span class="px-2 py-0.5 bg-rose-100 text-rose-800 font-bold text-[10px] rounded">Critical Path</span>
+        </div>
+
+        <!-- Metric Targets -->
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div class="bg-white p-3 rounded-lg border border-rose-100 shadow-xs">
+            <div class="text-[10px] uppercase font-bold text-slate-400">Baseline Failure Rate</div>
+            <div class="text-xs font-mono font-bold text-rose-600 mt-0.5">${w.baseline_metric}</div>
+          </div>
+          <div class="bg-white p-3 rounded-lg border border-emerald-100 shadow-xs">
+            <div class="text-[10px] uppercase font-bold text-slate-400">Target Post-Fix Rate</div>
+            <div class="text-xs font-mono font-bold text-emerald-600 mt-0.5">${w.target_metric}</div>
+          </div>
+        </div>
+
+        <!-- Verbatim Review Citations -->
+        <div class="space-y-2">
+          <div class="text-[11px] font-bold text-rose-900 flex items-center justify-between">
+            <span>Verified Public Evidence Citations:</span>
+            <span class="text-[10px] text-slate-500 font-normal">Google Play Store</span>
+          </div>
+          <div class="space-y-2">
+            ${citationsHtml}
+          </div>
+        </div>
+      </div>
+
+      <!-- COLUMN 2: HOW TO IMPROVE IT -->
+      <div class="bg-blue-50/40 rounded-xl border border-blue-200/80 p-5 space-y-4">
+        <div class="flex items-center space-x-2 border-b border-blue-200 pb-3">
+          <div class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
+            2
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-blue-950">HOW TO IMPROVE IT</h4>
+            <p class="text-[11px] text-blue-700">Engineering Implementation Blueprint & Action Plan</p>
+          </div>
+        </div>
+
+        <!-- Architectural Solution -->
+        <div class="bg-white p-3.5 rounded-lg border border-blue-100 shadow-xs space-y-1.5">
+          <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Architectural Solution</div>
+          <p class="text-xs text-slate-800 leading-relaxed font-semibold">${h.architectural_solution}</p>
+        </div>
+
+        <!-- Step-by-Step Implementation Steps -->
+        <div class="space-y-2">
+          <div class="text-[11px] font-bold text-blue-900">Step-by-Step Engineering Execution Roadmap:</div>
+          <div class="space-y-2">
+            ${stepsHtml}
+          </div>
+        </div>
+
+        <!-- Tech Stack Impact -->
+        <div class="bg-white p-3.5 rounded-lg border border-blue-100 shadow-xs space-y-1.5">
+          <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Technical Stack Impact & Repositories</div>
+          <ul class="space-y-1 font-sans">
+            ${techStackHtml}
+          </ul>
+        </div>
+
+        <!-- Rollout & Canary Plan -->
+        <div class="bg-white p-3 rounded-lg border border-blue-100 shadow-xs text-xs space-y-1">
+          <div class="text-[10px] uppercase font-bold text-slate-400">Canary Rollout & Experimentation</div>
+          <p class="text-slate-700 text-[11px] leading-relaxed">${h.rollout_and_experimentation}</p>
+        </div>
+
+        <!-- Operational Risks & Guardrails -->
+        <div class="space-y-1.5">
+          <div class="text-[11px] font-bold text-slate-800">Operational Risks & Mitigations:</div>
+          <div class="space-y-1.5">
+            ${risksHtml}
+          </div>
+        </div>
+
+        <!-- Expected Rating & Business Outcome -->
+        <div class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-3 rounded-lg shadow-sm text-xs space-y-0.5">
+          <div class="text-[10px] uppercase font-bold text-emerald-200">Expected Outcome & Rating Impact</div>
+          <p class="font-bold text-[11px] text-white leading-relaxed">${h.expected_outcome}</p>
+        </div>
+      </div>
+
+    </div>
+  `;
 }

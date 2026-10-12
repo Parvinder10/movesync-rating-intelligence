@@ -73,3 +73,28 @@ def test_api_export_csv():
     assert response.status_code == 200
     assert "text/csv" in response.headers["content-type"]
     assert "review_id" in response.text
+
+
+def test_api_recommendations_playbook():
+    response = client.get("/api/recommendations/playbook")
+    assert response.status_code == 200
+    data = response.json()
+    assert "playbook" in data
+    assert len(data["playbook"]) >= 3
+
+
+def test_api_recommendation_detail():
+    response = client.get("/api/recommendations/ACT-001")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["action_id"] == "ACT-001"
+    assert "what_to_improve" in data
+    assert "how_to_improve" in data
+
+
+def test_api_download_pdf():
+    response = client.get("/api/reports/latest/pdf")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert len(response.content) > 100000
+

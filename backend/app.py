@@ -1,7 +1,7 @@
 """
 Backend API Service for MoveSync Rating Intelligence System
 FastAPI application serving investigation data, evidence explorer,
-month-over-month comparisons, action tracker, and report downloads.
+month-over-month comparisons, action tracker, improvement playbooks, and report downloads.
 """
 
 import os
@@ -12,7 +12,7 @@ import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, Query, Path, Body, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Query, Path, Body, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
@@ -21,6 +21,7 @@ from backend.database import get_db_connection, DB_PATH
 from analysis.pipeline import InvestigationPipeline
 from analysis.prioritization import PrioritizationEngine
 from analysis.mom_comparison import MonthOverMonthComparator
+from analysis.improvement_playbook import get_all_playbook_actions, get_playbook_action
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("backend.app")
@@ -40,14 +41,15 @@ app.add_middleware(
 )
 
 pipeline = InvestigationPipeline(DB_PATH)
+router = APIRouter()
 
 
-@app.get("/api/health")
+@router.get("/health")
 def health_check():
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat(), "database": os.path.exists(DB_PATH)}
 
 
-@app.get("/api/app-info")
+@router.get("/app-info")
 def get_app_info():
     """Returns official verified MoveInSync application identity and listing metadata."""
     conn = get_db_connection(DB_PATH)
@@ -87,7 +89,7 @@ def get_app_info():
     }
 
 
-@app.get("/api/investigation/latest")
+@router.get("/investigation/latest")
 def get_latest_investigation():
     """Returns overview of the latest completed monthly investigation."""
     conn = get_db_connection(DB_PATH)
@@ -120,7 +122,7 @@ def get_latest_investigation():
     }
 
 
-@app.get("/api/investigation/runs")
+@router.get("/investigation/runs")
 def list_investigation_runs():
     """Returns chronological list of all recorded monthly investigation runs."""
     conn = get_db_connection(DB_PATH)
@@ -133,7 +135,7 @@ def list_investigation_runs():
     return {"runs": runs}
 
 
-@app.get("/api/investigation/{period}")
+@router.get("/investigation/{period}")
 def get_investigation_by_period(period: str = Path(..., description="Reporting period format YYYY-MM")):
     """Returns investigation details for a specific month."""
     conn = get_db_connection(DB_PATH)
@@ -157,7 +159,7 @@ def get_investigation_by_period(period: str = Path(..., description="Reporting p
     return {"run": run_dict, "issues": issues}
 
 
-@app.post("/api/investigation/run")
+@router.post("/investigation/run")
 def trigger_investigation_run(
     period: str = Body(..., embed=True, description="Reporting period e.g. '2026-10'"),
     collect_live: bool = Body(False, embed=True, description="Fetch fresh reviews from Google Play Store")
@@ -173,7 +175,6 @@ def trigger_investigation_run(
             metadata, _ = pipeline.collect_and_ingest(count=1000)
 
         result = pipeline.run_investigation_for_period(period, metadata)
-        # Update case study PDF
         pipeline.generate_case_study_pdf(metadata)
 
         return {
@@ -186,7 +187,7 @@ def trigger_investigation_run(
         raise HTTPException(status_code=500, detail=f"Investigation execution failed: {str(e)}")
 
 
-@app.get("/api/reviews")
+@router.get("/reviews")
 def get_reviews(
     query: Optional[str] = Query(None, description="Search keyword in review text"),
     score: Optional[int] = Query(None, description="Filter by star score (1-5)"),
@@ -225,12 +226,10 @@ def get_reviews(
 
     where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
 
-    # Total count query
     count_sql = f"SELECT COUNT(*) FROM cleaned_reviews c {where_clause}"
     cur.execute(count_sql, params)
     total_count = cur.fetchone()[0]
 
-    # Data query joining raw details
     data_sql = f"""
         SELECT c.*, r.user_name, r.thumbs_up_count, r.reply_content, r.at
         FROM cleaned_reviews c
@@ -251,7 +250,7 @@ def get_reviews(
     }
 
 
-@app.get("/api/priorities")
+@router.get("/priorities")
 def get_priorities(period: Optional[str] = Query(None, description="Reporting period; defaults to latest")):
     """Returns prioritized issues and multi-factor scoring for the specified or latest period."""
     conn = get_db_connection(DB_PATH)
@@ -273,7 +272,6 @@ def get_priorities(period: Optional[str] = Query(None, description="Reporting pe
     for i in issues:
         i["sample_review_ids"] = json.loads(i["sample_review_ids_json"])
 
-    # Get previous period issues for rank comparison
     prev_period = pipeline._get_previous_period(period)
     cur.execute("SELECT * FROM investigation_runs WHERE reporting_period = ?", (prev_period,))
     prev_run = cur.fetchone()
@@ -292,7 +290,7 @@ def get_priorities(period: Optional[str] = Query(None, description="Reporting pe
     }
 
 
-@app.get("/api/comparison")
+@router.get("/comparison")
 def get_month_over_month_comparison(
     current_period: Optional[str] = Query(None),
     previous_period: Optional[str] = Query(None)
@@ -338,7 +336,7 @@ def get_month_over_month_comparison(
     return comparison
 
 
-@app.get("/api/actions")
+@router.get("/actions")
 def get_actions():
     """Returns persistent action register with evidence links and outcome statuses."""
     conn = get_db_connection(DB_PATH)
@@ -349,7 +347,7 @@ def get_actions():
     return {"actions": actions}
 
 
-@app.patch("/api/actions/{action_id}")
+@router.patch("/actions/{action_id}")
 def update_action(
     action_id: str = Path(...),
     status: Optional[str] = Body(None),
@@ -396,7 +394,28 @@ def update_action(
     return {"status": "success", "action": act_dict}
 
 
-@app.get("/api/reports")
+@router.get("/recommendations/playbook")
+def get_recommendations_playbook():
+    """
+    Returns the comprehensive engineering improvement playbook for all recommended actions,
+    detailing WHAT should be improved and HOW to improve it.
+    """
+    return {"playbook": get_all_playbook_actions()}
+
+
+@router.get("/recommendations/{action_id}")
+def get_recommendation_detail(action_id: str = Path(..., description="Action ID e.g. ACT-001")):
+    """
+    Returns detailed diagnosis (WHAT to improve) and engineering roadmap (HOW to improve)
+    for a specific recommended action.
+    """
+    plan = get_playbook_action(action_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail=f"Improvement playbook not found for {action_id}")
+    return plan
+
+
+@router.get("/reports")
 def list_reports():
     """Lists generated monthly reports."""
     conn = get_db_connection(DB_PATH)
@@ -407,7 +426,7 @@ def list_reports():
     return {"reports": reports}
 
 
-@app.get("/api/reports/{period}/pdf")
+@router.get("/reports/{period}/pdf")
 def download_pdf(period: str):
     """Serves the generated case study PDF report."""
     pdf_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "reports", "MoveInSync_Case_Study.pdf")
@@ -420,7 +439,7 @@ def download_pdf(period: str):
     )
 
 
-@app.get("/api/export/reviews.csv")
+@router.get("/export/reviews.csv")
 def export_reviews_csv(period: Optional[str] = Query(None)):
     """Exports cleaned review evidence dataset to CSV."""
     conn = get_db_connection(DB_PATH)
@@ -447,7 +466,7 @@ def export_reviews_csv(period: Optional[str] = Query(None)):
     )
 
 
-@app.get("/api/export/issues.csv")
+@router.get("/export/issues.csv")
 def export_issues_csv(period: Optional[str] = Query(None)):
     """Exports prioritized issue snapshots to CSV."""
     conn = get_db_connection(DB_PATH)
@@ -474,14 +493,24 @@ def export_issues_csv(period: Optional[str] = Query(None)):
     )
 
 
-# Serve frontend static assets
-FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
+# Attach router both with prefix /api and at root for full serverless flexibility
+app.include_router(router, prefix="/api")
+app.include_router(router)
+
+# Serve frontend static assets and root page
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FRONTEND_DIR = os.path.join(ROOT_DIR, "frontend")
+PUBLIC_DIR = os.path.join(ROOT_DIR, "public")
+
 if os.path.exists(FRONTEND_DIR):
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
-    @app.get("/")
-    def serve_frontend():
-        index_file = os.path.join(FRONTEND_DIR, "index.html")
-        if os.path.exists(index_file):
-            return FileResponse(index_file)
-        return {"message": "Frontend index.html not yet created."}
+@app.get("/")
+def serve_frontend_root():
+    for candidate in [
+        os.path.join(PUBLIC_DIR, "index.html"),
+        os.path.join(FRONTEND_DIR, "index.html")
+    ]:
+        if os.path.exists(candidate):
+            return FileResponse(candidate)
+    return {"status": "ok", "app": "MoveSync Rating Intelligence"}
