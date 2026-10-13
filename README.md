@@ -2,10 +2,12 @@
 ### Recurring Monthly Investigation, Defect Prioritization & Outcome Tracking Engine
 
 [![Tests Passing](https://img.shields.io/badge/tests-28%2F28%20passed-success)](tests/)
+[![CI](https://github.com/Parvinder10/movesync-rating-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/Parvinder10/movesync-rating-intelligence/actions)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-1.0.0-009688.svg)](https://fastapi.tiangolo.com/)
 [![Verified Evidence](https://img.shields.io/badge/evidence-Play%20Store%20Verified-blue)](https://play.google.com/store/apps/details?id=com.moveinsync.ets)
 [![Live Production](https://img.shields.io/badge/Vercel-Live%20Dashboard-000000?logo=vercel)](https://movesync-rating-intelligence-kappa.vercel.app)
+
 
 
 ---
